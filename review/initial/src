@@ -1,0 +1,110 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <stdbool.h>
+
+int n;                                                 // Number of processes
+int m;                                                  // Number of resources
+int *available;                                         // Number of available resources
+int **maximum;                                          // Maximum resources needed by each process
+int **allocation;                                        // Resources allocated to each process
+int **need;                                               // Resources still needed by each process
+bool *finished;                                               // Boolean to track if process is finished
+
+                              // Mutex lock to protect shared data
+pthread_mutex_t mutex;
+
+                            // Function to allocate resources
+void *allocate_resources(void *id)
+{
+    int process = *(int *)id;
+    pthread_mutex_lock(&mutex);
+    // Check if process can be allocated
+    bool can_allocate = true;
+    for(int i = 0; i < m; i++)
+    {
+        if (need[process][i] > available[i])
+        {
+            can_allocate = false;
+            break;
+        }
+    }
+                                 // Allocate resources if possible
+    if (can_allocate)
+    {
+        for (int i = 0; i < m; i++)
+        {
+            available[i] -= need[process][i];
+            allocation[process][i] += need[process][i];
+            need[process][i] = 0;
+        }
+        finished[process] = true;
+    }
+    pthread_mutex_unlock(&mutex);
+}
+
+// Function to check if system is in safe state
+bool is_safe()
+{
+    bool safe = false;
+    // Create work array to track available resources
+    int work[m];
+    for (int i = 0; i < m; i++)
+    {
+        work[i] = available[i];
+    }
+    // Create finish array to track finished processes
+    bool finish[n];
+    for (int i = 0; i < n; i++)
+    {
+        finish[i] = finished[i];
+    }
+    // Iterate through all processes until system is in safe state
+    int count = 0;
+    while (count < n)
+    {
+        bool found = false;
+        for (int i = 0; i < n; i++)
+        {
+            if (!finish[i])
+            {
+                // Check if process can be allocated
+                bool can_allocate = true;
+                for (int j = 0; j < m; j++)
+                {
+                    if (need[i][j] > work[j])
+                    {
+                        can_allocate = false;
+                        break;
+                    }
+                }
+                           // Allocate resources if possible
+                if (can_allocate)
+                {
+                    for (int j = 0; j < m; j++)
+                    {
+                        work[j] += allocation[i][j];
+                    }
+                    finish[i] = true;
+                    found = true;
+                }
+            }
+        }
+        if (found == false)
+        {
+            break;
+        }
+        count++;
+    }
+                           // Check if system is in safe state
+    safe = true;
+    for (int i = 0; i < n; i++)
+    {
+        if (finish[i] == false)
+        {
+            safe = false;
+            break;
+        }
+    }
+    return safe;
+}
