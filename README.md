@@ -1,4 +1,4 @@
-# Multi-Threading-using-bankers-algorithm
+# Bankers-algorithm
 Operating System
 
 Q3. Write a multithreaded program that implements the banker's algorithm. Create n threads 
